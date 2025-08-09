@@ -12,6 +12,7 @@ from a2a.types import (
     AgentSkill,
 )
 from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from pydantic import BaseModel, ConfigDict
 from starlette.applications import Starlette
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -65,7 +66,7 @@ class AgentFactory:
             "auditor": {
                 "name": "Llm_Auditor",
                 "description": "Audits and refines answers with web cross-checking.",
-                "model": "gemini-2.0-flash",
+                "model": "openai-4o",
                 "prompt": "You are a rigorous LLM answer auditor. Critically evaluate and improve answers.",
                 "mcps": [],
             },
@@ -110,6 +111,18 @@ class AgentFactory:
         instruction = cfg.get("prompt", "You are a helpful assistant.")
 
         try:
+            # Check if model is an OpenAI model (various formats)
+            if model.startswith("openai-"):
+                model_name = model[7:]  # Remove "openai-" prefix
+                if model_name.startswith("gpt-"):
+                    litellm_model = f"openai/{model_name}"
+                else:
+                    # Already in correct format (gpt-4, o1-preview, etc.)
+                    litellm_model = f"openai/gpt-{model_name}"
+                model = LiteLlm(model=litellm_model)
+                logger.info(
+                    f"Successfully created LiteLLM agent with model: {litellm_model}"
+                )
             agent = LlmAgent(
                 model=model,
                 name=name,

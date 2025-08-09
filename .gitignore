@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
 # Distribution / packaging
 .Python
 build/
@@ -103,7 +102,6 @@ celerybeat.pid
 
 # Environments
 .env
-.env.*
 .venv
 env/
 venv/
