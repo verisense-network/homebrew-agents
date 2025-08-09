@@ -9,6 +9,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "google-adk>=1.10.0",
     "litellm>=1.75.3",
+    "rich>=14.1.0",
 ]
 
 [tool.uv.workspace]
