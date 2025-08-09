@@ -1,7 +1,7 @@
 from google.adk.agents import Agent
 from homebrew_agent.agent_executor import ADKAgentExecutor
 from homebrew_agent.logging_config import setup_logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import asyncpg
 import json
 import os
@@ -13,6 +13,8 @@ from a2a.types import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools.mcp_tool import MCPToolset, StreamableHTTPConnectionParams
+from google.adk.planners import PlanReActPlanner
 from pydantic import BaseModel, ConfigDict
 from starlette.applications import Starlette
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -68,7 +70,7 @@ class AgentFactory:
                 "description": "Audits and refines answers with web cross-checking.",
                 "model": "openai-4o",
                 "prompt": "You are a rigorous LLM answer auditor. Critically evaluate and improve answers.",
-                "mcps": [],
+                "mcps": ["mcp-1", "mcp-2"],  # Example MCP IDs
             },
             "writer": {
                 "name": "Pro_Writer",
@@ -101,7 +103,53 @@ class AgentFactory:
             ],
         )
 
-    def _build_agent(self, cfg: Dict[str, Any]) -> LlmAgent:
+    async def _fetch_mcp_configs(self, mcp_ids: List[str]) -> List[Dict[str, Any]]:
+        """Fetch MCP configurations from database"""
+        if not mcp_ids:
+            return []
+
+        try:
+            conn = await asyncpg.connect(self.db_url)
+            try:
+                rows = await conn.fetch(
+                    """
+                    SELECT mcp_id, name, description, url
+                    FROM mcps
+                    WHERE mcp_id = ANY($1::text[])
+                    """,
+                    mcp_ids,
+                )
+                return [
+                    {
+                        "mcp_id": row["mcp_id"],
+                        "name": row["name"],
+                        "description": row["description"],
+                        "url": row["url"],
+                    }
+                    for row in rows
+                ]
+            finally:
+                await conn.close()
+        except Exception as e:
+            logger.warning(f"Failed to fetch MCP configs: {e}")
+            # Return mock MCP data for testing
+            mock_mcps = {
+                "mcp-1": {
+                    "mcp_id": "mcp-1",
+                    "name": "PPT Generator MCP",
+                    "description": "MCP for generating PowerPoint presentations",
+                    "url": "https://ppt-mcp-974618882715.us-east1.run.app/mcp/",
+                },
+                "mcp-2": {
+                    "mcp_id": "mcp-2",
+                    "name": "Data Analysis MCP",
+                    "description": "MCP for data analysis and visualization",
+                    "url": "https://data-mcp-974618882715.us-east1.run.app/mcp/",
+                },
+            }
+            return [mock_mcps[mcp_id] for mcp_id in mcp_ids if mcp_id in mock_mcps]
+
+    async def _build_agent(self, cfg: Dict[str, Any]) -> LlmAgent:
         """Build LLM Agent"""
         logger.info(f"Building agent with config: {json.dumps(cfg, indent=2)}")
 
@@ -109,6 +157,25 @@ class AgentFactory:
         name = cfg.get("name", "default_agent")
         description = cfg.get("description", "A helpful AI assistant")
         instruction = cfg.get("prompt", "You are a helpful assistant.")
+
+        # Fetch MCP configurations and create tools
+        mcp_ids = cfg.get("mcps", [])
+        mcp_configs = await self._fetch_mcp_configs(mcp_ids)
+        tools = []
+
+        for mcp_config in mcp_configs:
+            try:
+                mcp_tool = MCPToolset(
+                    connection_params=StreamableHTTPConnectionParams(
+                        url=mcp_config["url"]
+                    )
+                )
+                tools.append(mcp_tool)
+                logger.info(
+                    f"Added MCP tool: {mcp_config['name']} from {mcp_config['url']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create MCP tool for {mcp_config['name']}: {e}")
 
         try:
             # Check if model is an OpenAI model (various formats)
@@ -123,13 +190,29 @@ class AgentFactory:
                 logger.info(
                     f"Successfully created LiteLLM agent with model: {litellm_model}"
                 )
-            agent = LlmAgent(
-                model=model,
-                name=name,
-                description=description,
-                instruction=instruction,
-            )
-            logger.info(f"Successfully created agent: {agent.name}")
+
+            # Create agent with or without planner based on tools availability
+            if tools:
+                agent = LlmAgent(
+                    model=model,
+                    name=name,
+                    description=description,
+                    instruction=instruction,
+                    planner=PlanReActPlanner(),
+                    tools=tools,
+                )
+                logger.info(
+                    f"Successfully created agent with {len(tools)} MCP tools: {agent.name}"
+                )
+            else:
+                agent = LlmAgent(
+                    model=model,
+                    name=name,
+                    description=description,
+                    instruction=instruction,
+                )
+                logger.info(f"Successfully created agent: {agent.name}")
+
             return agent
         except Exception as e:
             logger.error(f"Failed to create agent: {e}")
@@ -165,7 +248,7 @@ class AgentFactory:
         if not cfg:
             return None
 
-        agent = self._build_agent(cfg)
+        agent = await self._build_agent(cfg)
         card = self._build_agent_card(cfg)
         app = self._build_a2a_substarlette(card, agent, InMemoryTaskStore())
 
