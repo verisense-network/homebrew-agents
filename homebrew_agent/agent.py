@@ -140,12 +140,12 @@ class AgentFactory:
                     "description": "MCP for generating PowerPoint presentations",
                     "url": "https://ppt-mcp-974618882715.us-east1.run.app/mcp/",
                 },
-                "mcp-2": {
-                    "mcp_id": "mcp-2",
-                    "name": "Data Analysis MCP",
-                    "description": "MCP for data analysis and visualization",
-                    "url": "https://data-mcp-974618882715.us-east1.run.app/mcp/",
-                },
+                # "mcp-2": {
+                #     "mcp_id": "mcp-2",
+                #     "name": "Data Analysis MCP",
+                #     "description": "MCP for data analysis and visualization",
+                #     "url": "https://data-mcp-974618882715.us-east1.run.app/mcp/",
+                # },
             }
             return [mock_mcps[mcp_id] for mcp_id in mcp_ids if mcp_id in mock_mcps]
 
