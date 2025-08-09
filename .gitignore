@@ -232,3 +232,4 @@ uv.lock
 
 # Project specific
 adk-agent-server/
+.idea

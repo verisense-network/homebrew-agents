@@ -1,0 +1,2 @@
+gcloud builds submit --config gc.toml .
+gcloud run services update homebrew-agents --image=europe-west1-docker.pkg.dev/beta-testnet-20250403/cloud-run-source-deploy/homebrew/homebrew-agents:latest --region=us-east1
