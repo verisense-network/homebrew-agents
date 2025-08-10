@@ -44,19 +44,22 @@ class AgentFactory:
             try:
                 row = await conn.fetchrow(
                     """
-                    SELECT name, description, model, prompt, mcps
-                    FROM agents
-                    WHERE agent_id = $1
+                    SELECT id, name, description, model, prompt, mcps, created_at, updated_at
+                    FROM homebrew_agents
+                    WHERE id = $1::uuid
                     """,
                     agent_id,
                 )
                 if row:
                     return {
+                        "id": str(row["id"]),
                         "name": row["name"],
                         "description": row["description"],
                         "model": row["model"],
                         "prompt": row["prompt"],
                         "mcps": list(row["mcps"]) if row["mcps"] is not None else [],
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
                     }
             finally:
                 await conn.close()
@@ -83,12 +86,13 @@ class AgentFactory:
         return MOCKS.get(agent_id)
 
     def _build_agent_card(self, cfg: Dict[str, Any]) -> AgentCard:
+        agent_id = cfg["id"]
         """Build Agent Card"""
         return AgentCard(
             name=cfg["name"],
             description=cfg.get("description") or "",
             version="1.0.0",
-            url=os.environ.get("APP_URL", "http://localhost:8080"),
+            url=os.environ.get("APP_URL", "http://34.71.62.169:8080") + "/" + agent_id,
             defaultInputModes=["text", "text/plain"],
             defaultOutputModes=["text", "text/plain"],
             capabilities=AgentCapabilities(streaming=True),
@@ -113,18 +117,19 @@ class AgentFactory:
             try:
                 rows = await conn.fetch(
                     """
-                    SELECT mcp_id, name, description, url
-                    FROM mcps
-                    WHERE mcp_id = ANY($1::text[])
+                    SELECT id, name, description, url, provider
+                    FROM mcp_servers
+                    WHERE id = ANY($1::text[])
                     """,
                     mcp_ids,
                 )
                 return [
                     {
-                        "mcp_id": row["mcp_id"],
+                        "id": row["id"],
                         "name": row["name"],
                         "description": row["description"],
                         "url": row["url"],
+                        "provider": row["provider"],
                     }
                     for row in rows
                 ]
@@ -135,16 +140,18 @@ class AgentFactory:
             # Return mock MCP data for testing
             mock_mcps = {
                 "mcp-1": {
-                    "mcp_id": "mcp-1",
+                    "id": "mcp-1",
                     "name": "PPT Generator MCP",
                     "description": "MCP for generating PowerPoint presentations",
                     "url": "https://ppt-mcp-974618882715.us-east1.run.app/mcp/",
+                    "provider": "ppt-generator",
                 },
                 # "mcp-2": {
-                #     "mcp_id": "mcp-2",
+                #     "id": "mcp-2",
                 #     "name": "Data Analysis MCP",
                 #     "description": "MCP for data analysis and visualization",
                 #     "url": "https://data-mcp-974618882715.us-east1.run.app/mcp/",
+                #     "provider": "data-analysis",
                 # },
             }
             return [mock_mcps[mcp_id] for mcp_id in mcp_ids if mcp_id in mock_mcps]
