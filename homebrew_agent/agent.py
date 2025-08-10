@@ -69,6 +69,7 @@ class AgentFactory:
         # Mock data
         MOCKS = {
             "auditor": {
+                "id": "auditor",
                 "name": "Llm_Auditor",
                 "description": "Audits and refines answers with web cross-checking.",
                 "model": "openai-4o",
@@ -76,6 +77,7 @@ class AgentFactory:
                 "mcps": ["mcp-1", "mcp-2"],  # Example MCP IDs
             },
             "writer": {
+                "id": "writer",
                 "name": "Pro_Writer",
                 "description": "Writes and edits copy in a clean, factual tone.",
                 "model": "gemini-2.0-flash",
