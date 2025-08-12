@@ -171,6 +171,7 @@ class AgentFactory:
         # Fetch MCP configurations and create tools
         mcp_ids = cfg.get("mcps", [])
         mcp_configs = await self._fetch_mcp_configs(mcp_ids)
+        logger.info(f"MCP configs: {mcp_configs}")
         tools = []
 
         for mcp_config in mcp_configs:
