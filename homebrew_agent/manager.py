@@ -92,38 +92,38 @@ class AgentManager:
     async def get_or_create_agent_by_id(self, agent_id: str) -> Optional[AgentInfo]:
         current_time = time.time()
 
-        # Check if agent exists in cache and is not expired
-        if agent_id in self.agents:
-            cached_info = self.agents[agent_id]
+        # # Check if agent exists in cache and is not expired
+        # if agent_id in self.agents:
+        #     cached_info = self.agents[agent_id]
 
-            # Check if entry is expired
-            if current_time - cached_info.created_at > self.cache_ttl:
-                del self.agents[agent_id]
-                logger.info(f"Removed expired agent from cache: {agent_id}")
-            else:
-                # Update access information
-                cached_info.last_accessed = current_time
-                cached_info.access_count += 1
-                logger.debug(f"Cache hit for agent: {agent_id}")
-                return cached_info.agent_info
+        #     # Check if entry is expired
+        #     if current_time - cached_info.created_at > self.cache_ttl:
+        #         del self.agents[agent_id]
+        #         logger.info(f"Removed expired agent from cache: {agent_id}")
+        #     else:
+        #         # Update access information
+        #         cached_info.last_accessed = current_time
+        #         cached_info.access_count += 1
+        #         logger.debug(f"Cache hit for agent: {agent_id}")
+        #         return cached_info.agent_info
 
         # Agent not in cache or expired, create new one
         logger.info(f"Creating new agent: {agent_id}")
         agent_info = await self.agent_factory.build_agent_starlette_by_id(agent_id)
 
-        if agent_info:
-            # Check cache size limit and evict if necessary
-            if len(self.agents) >= self.max_cache_size:
-                self._evict_lru_entry()
+        # if agent_info:
+        #     # Check cache size limit and evict if necessary
+        #     if len(self.agents) >= self.max_cache_size:
+        #         self._evict_lru_entry()
 
-            # Add to cache
-            self.agents[agent_id] = CachedAgentInfo(
-                agent_info=agent_info,
-                created_at=current_time,
-                last_accessed=current_time,
-                access_count=1,
-            )
-            logger.info(f"Added agent to cache: {agent_id}")
+        #     # Add to cache
+        #     self.agents[agent_id] = CachedAgentInfo(
+        #         agent_info=agent_info,
+        #         created_at=current_time,
+        #         last_accessed=current_time,
+        #         access_count=1,
+        #     )
+        #     logger.info(f"Added agent to cache: {agent_id}")
 
         return agent_info
 
