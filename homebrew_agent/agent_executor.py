@@ -1,3 +1,4 @@
+import time
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -103,6 +104,7 @@ class ADKAgentExecutor(AgentExecutor):
                             # Log or handle function calls if needed
                             pass  # Function calls are handled internally by ADK
             await updater.complete()
+            time.sleep(1)
         except Exception as e:
             await updater.update_status(
                 TaskState.failed,
