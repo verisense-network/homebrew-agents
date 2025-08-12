@@ -1,3 +1,4 @@
+import datetime
 from google.adk.agents import Agent
 from homebrew_agent.agent_executor import ADKAgentExecutor
 from homebrew_agent.logging_config import setup_logging
@@ -257,6 +258,10 @@ class AgentFactory:
         if not cfg:
             return None
 
+        for key in ("created_at", "updated_at", "deleted_at"):
+            v = cfg.get(key)
+            if isinstance(v, (datetime.datetime, datetime.date)):
+                cfg[key] = v.isoformat()
         agent = await self._build_agent(cfg)
         card = self._build_agent_card(cfg)
         app = self._build_a2a_substarlette(card, agent, InMemoryTaskStore())
