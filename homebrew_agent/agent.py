@@ -202,7 +202,16 @@ class AgentFactory:
                 logger.info(
                     f"Successfully created LiteLLM agent with model: {litellm_model}"
                 )
+            # Ensure name is a valid identifier
+            import re
 
+            # Replace invalid characters with underscores and ensure it starts with a letter/underscore
+            name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+            if name and not name[0].isalpha() and name[0] != "_":
+                name = "_" + name
+            # Ensure name is not empty
+            if not name:
+                name = "default_agent"
             # Create agent with or without planner based on tools availability
             if tools:
                 agent = LlmAgent(
