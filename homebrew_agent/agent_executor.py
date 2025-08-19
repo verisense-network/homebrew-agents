@@ -123,8 +123,14 @@ class ADKAgentExecutor(AgentExecutor):
                     raise
 
             # Run the synchronous operation in a thread pool
-            events = await loop.run_in_executor(None, run_agent_sync)
-            logger.info(f"Agent execution completed, processing {len(events)} events")
+            try:
+                events = await loop.run_in_executor(None, run_agent_sync)
+                logger.info(
+                    f"Agent execution completed, processing {len(events)} events"
+                )
+            except Exception as e:
+                logger.error(f"Error in thread pool execution: {e}", exc_info=True)
+                raise  # Re-raise the exception to be caught by the outer try-except block
 
             # Process events asynchronously
             for event in events:
