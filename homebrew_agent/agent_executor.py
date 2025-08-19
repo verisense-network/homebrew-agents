@@ -96,41 +96,32 @@ class ADKAgentExecutor(AgentExecutor):
             )
 
             logger.info(f"Running agent with query: {query[:100]}...")
-            # Use synchronous runner.run() to avoid cancel scope issues
-            # Run this in a thread pool to avoid blocking the event loop
-            loop = asyncio.get_event_loop()
 
-            def run_agent_sync():
-                try:
-                    # Check if agent has tools that might cause async issues
-                    if hasattr(self.agent, "tools") and self.agent.tools:
-                        logger.info(
-                            f"Agent has {len(self.agent.tools)} tools, checking for MCP tools"
-                        )
-                        for tool in self.agent.tools:
-                            if hasattr(tool, "_mcp_session_manager"):
-                                logger.warning(
-                                    "Agent has MCP tools that may cause async issues"
-                                )
-                                break
+            content = types.Content(
+                role="user", parts=[types.Part.from_text(text=query)]
+            )
 
-                    events = self.runner.run(
-                        user_id=user_id, session_id=session.id, new_message=content
-                    )
-                    return list(events)  # Convert generator to list
-                except Exception as e:
-                    logger.error(f"Error in synchronous agent run: {e}")
-                    raise
-
-            # Run the synchronous operation in a thread pool
+            events = []
             try:
-                events = await loop.run_in_executor(None, run_agent_sync)
-                logger.info(
-                    f"Agent execution completed, processing {len(events)} events"
-                )
-            except Exception as e:
-                logger.error(f"Error in thread pool execution: {e}", exc_info=True)
-                raise  # Re-raise the exception to be caught by the outer try-except block
+                # 如果 ADK 还有 run_stream / astream，也可用，思路相同
+                async for ev in self.runner.run_async(
+                    user_id=user_id,
+                    session_id=session.id,
+                    new_message=content,
+                    # 某些版本支持：raise_on_error=True
+                ):
+                    # 把“错误事件”当作异常立即抛
+                    if getattr(ev, "type", None) in {"error", "on_error"}:
+                        raise RuntimeError(f"Runner error event: {ev}")
+                    events.append(ev)
+            except Exception:
+                logger.exception("runner.run_async failed")
+                raise
+
+            if not events:
+                raise RuntimeError("Runner produced no events (likely upstream crash).")
+
+            logger.info("Agent execution completed, processing %d events", len(events))
 
             # Process events asynchronously
             for event in events:
