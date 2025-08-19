@@ -224,9 +224,6 @@ pids
 # Claude Code
 .claude/
 
-# UV
-uv.lock
-
 # Ruff
 .ruff_cache/
 
