@@ -1,11 +1,12 @@
 import datetime
+import asyncio
+import os
 from google.adk.agents import Agent
 from homebrew_agent.agent_executor import ADKAgentExecutor
 from homebrew_agent.logging_config import setup_logging
 from typing import Any, Dict, List, Optional, Tuple
 import asyncpg
 import json
-import os
 
 from a2a.types import (
     AgentCapabilities,
@@ -171,23 +172,57 @@ class AgentFactory:
         # Fetch MCP configurations and create tools
         mcp_ids = cfg.get("mcps", [])
         logger.info(f"MCP ids: {mcp_ids}")
-        mcp_configs = await self._fetch_mcp_configs(mcp_ids)
-        logger.info(f"MCP configs: {mcp_configs}")
+
+        # Check if MCP tools are disabled via environment variable
+        if os.environ.get("DISABLE_MCP_TOOLS", "true").lower() == "true":
+            logger.warning(
+                "MCP tools disabled by default to prevent async issues. Set DISABLE_MCP_TOOLS=false to enable."
+            )
+            mcp_configs = []
+        else:
+            mcp_configs = await self._fetch_mcp_configs(mcp_ids)
+            logger.info(f"MCP configs: {mcp_configs}")
+
         tools = []
+        failed_mcp_count = 0
+        total_mcp_count = len(mcp_configs)
 
         for mcp_config in mcp_configs:
             try:
+                logger.info(
+                    f"Attempting to create MCP tool for {mcp_config['name']} at {mcp_config['url']}"
+                )
+
+                # Create MCP tool synchronously with error handling
                 mcp_tool = MCPToolset(
                     connection_params=StreamableHTTPConnectionParams(
                         url=mcp_config["url"]
                     )
                 )
+
                 tools.append(mcp_tool)
                 logger.info(
-                    f"Added MCP tool: {mcp_config['name']} from {mcp_config['url']}"
+                    f"Successfully added MCP tool: {mcp_config['name']} from {mcp_config['url']}"
                 )
             except Exception as e:
-                logger.error(f"Failed to create MCP tool for {mcp_config['name']}: {e}")
+                failed_mcp_count += 1
+                logger.error(
+                    f"Failed to create MCP tool for {mcp_config['name']} at {mcp_config['url']}: {e}"
+                )
+                logger.warning(
+                    f"Skipping MCP tool {mcp_config['name']} due to connection failure"
+                )
+                # Continue without this MCP tool rather than failing the entire agent creation
+
+        # If more than half of MCP tools failed, disable all MCP tools to prevent issues
+        if total_mcp_count > 0 and failed_mcp_count > total_mcp_count / 2:
+            logger.error(
+                f"More than half of MCP tools failed ({failed_mcp_count}/{total_mcp_count}). Disabling all MCP tools."
+            )
+            tools = []
+            logger.warning(
+                "Agent will be created without MCP tools to prevent connection issues."
+            )
 
         try:
             # Check if model is an OpenAI model (various formats)

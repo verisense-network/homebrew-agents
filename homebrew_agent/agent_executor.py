@@ -1,4 +1,7 @@
 import time
+import asyncio
+import concurrent.futures
+import logging
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -17,6 +20,8 @@ from google.genai import types
 from pydantic import BaseModel
 from a2a.types import AgentCard
 from starlette.applications import Starlette
+
+logger = logging.getLogger(__name__)
 
 
 class ADKAgentExecutor(AgentExecutor):
@@ -70,6 +75,9 @@ class ADKAgentExecutor(AgentExecutor):
             user_id = context.call_context.user.user_name
         else:
             user_id = "a2a_user"
+
+        logger.info(f"Starting agent execution for user: {user_id}, task: {task.id}")
+        session = None
         try:
             # Update status with custom message
             await updater.update_status(
@@ -87,10 +95,39 @@ class ADKAgentExecutor(AgentExecutor):
                 role="user", parts=[types.Part.from_text(text=query)]
             )
 
-            response_text = ""
-            async for event in self.runner.run_async(
-                user_id=user_id, session_id=session.id, new_message=content
-            ):
+            logger.info(f"Running agent with query: {query[:100]}...")
+            # Use synchronous runner.run() to avoid cancel scope issues
+            # Run this in a thread pool to avoid blocking the event loop
+            loop = asyncio.get_event_loop()
+
+            def run_agent_sync():
+                try:
+                    # Check if agent has tools that might cause async issues
+                    if hasattr(self.agent, "tools") and self.agent.tools:
+                        logger.info(
+                            f"Agent has {len(self.agent.tools)} tools, checking for MCP tools"
+                        )
+                        for tool in self.agent.tools:
+                            if hasattr(tool, "_mcp_session_manager"):
+                                logger.warning(
+                                    "Agent has MCP tools that may cause async issues"
+                                )
+                                break
+
+                    events = self.runner.run(
+                        user_id=user_id, session_id=session.id, new_message=content
+                    )
+                    return list(events)  # Convert generator to list
+                except Exception as e:
+                    logger.error(f"Error in synchronous agent run: {e}")
+                    raise
+
+            # Run the synchronous operation in a thread pool
+            events = await loop.run_in_executor(None, run_agent_sync)
+            logger.info(f"Agent execution completed, processing {len(events)} events")
+
+            # Process events asynchronously
+            for event in events:
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, "text") and part.text:
@@ -102,12 +139,39 @@ class ADKAgentExecutor(AgentExecutor):
                             )
                         elif hasattr(part, "function_call"):
                             # Log or handle function calls if needed
-                            pass  # Function calls are handled internally by ADK
+                            logger.debug(
+                                f"Function call detected: {part.function_call}"
+                            )
+
             await updater.complete()
-            time.sleep(1)
+            logger.info(f"Agent execution completed successfully for task: {task.id}")
+            await asyncio.sleep(1)  # Use asyncio.sleep instead of time.sleep
+
         except Exception as e:
+            logger.error(f"Error during agent execution: {e}", exc_info=True)
+
+            # Check if this is an MCP-related error
+            error_msg = str(e)
+            if (
+                "mcp" in error_msg.lower()
+                or "cancelled" in error_msg.lower()
+                or "wouldblock" in error_msg.lower()
+            ):
+                error_msg = "Agent execution failed due to tool connection issues. Please try again or contact support if the problem persists."
+                logger.warning(
+                    "MCP-related error detected, providing user-friendly error message"
+                )
+
             await updater.update_status(
                 TaskState.failed,
-                new_agent_text_message(f"Error: {e!s}", task.context_id, task.id),
+                new_agent_text_message(error_msg, task.context_id, task.id),
                 final=True,
             )
+        finally:
+            # Ensure proper cleanup
+            if session:
+                try:
+                    # Clean up session if needed
+                    pass
+                except Exception as cleanup_error:
+                    logger.error(f"Error during cleanup: {cleanup_error}")
