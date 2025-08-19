@@ -174,9 +174,9 @@ class AgentFactory:
         logger.info(f"MCP ids: {mcp_ids}")
 
         # Check if MCP tools are disabled via environment variable
-        if os.environ.get("DISABLE_MCP_TOOLS", "true").lower() == "true":
+        if os.environ.get("DISABLE_MCP_TOOLS", "false").lower() == "true":
             logger.warning(
-                "MCP tools disabled by default to prevent async issues. Set DISABLE_MCP_TOOLS=false to enable."
+                "MCP tools disabled via DISABLE_MCP_TOOLS environment variable"
             )
             mcp_configs = []
         else:
