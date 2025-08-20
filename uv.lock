@@ -8,21 +8,18 @@ resolution-markers = [
 
 [[package]]
 name = "a2a-sdk"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "fastapi" },
     { name = "google-api-core" },
     { name = "httpx" },
     { name = "httpx-sse" },
     { name = "protobuf" },
     { name = "pydantic" },
-    { name = "sse-starlette" },
-    { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/50/705f7972114dd0fe918840eb966533e511358f9881ddcdc0adebe64768c9/a2a_sdk-0.3.0.tar.gz", hash = "sha256:a07835e980222b1274af2c71f641c18b022d119b95aacdc7104385c09f35dc8f", size = 211714 }
+sdist = { url = "https://files.pythonhosted.org/packages/94/a3/62e9bff37a4cb55c6d6fc59a732a9f07e95e66e13cdb4f0c53707d8ad8da/a2a_sdk-0.3.1.tar.gz", hash = "sha256:962099062279073a1b5ecd91666f2b0a1db90eb971436fba804af82173d2e305", size = 216716 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/b7/93c48f9857980a6af2a242050d559d74df394d1b45d4f33226fb027e39e6/a2a_sdk-0.3.0-py3-none-any.whl", hash = "sha256:8a0a0fc58013b055174b18e6849b68b129a50f31d41184d222da59f94ef29da7", size = 130282 },
+    { url = "https://files.pythonhosted.org/packages/84/1d/6c25a110fbb558ee5c527a9477fbcf4656d7265e6bda62b45c19e9ff27a3/a2a_sdk-0.3.1-py3-none-any.whl", hash = "sha256:904bb1b58d8ace6382a9c4c279d102267c5cda393f4ab42583fdb63551e1cd3b", size = 133165 },
 ]
 
 [[package]]
@@ -497,7 +494,7 @@ wheels = [
 
 [[package]]
 name = "google-adk"
-version = "1.10.0"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absolufy-imports" },
@@ -508,6 +505,7 @@ dependencies = [
     { name = "google-api-python-client" },
     { name = "google-cloud-aiplatform", extra = ["agent-engines"] },
     { name = "google-cloud-secret-manager" },
+    { name = "google-cloud-spanner" },
     { name = "google-cloud-speech" },
     { name = "google-cloud-storage" },
     { name = "google-genai" },
@@ -530,9 +528,8 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/1b/1f61a4e6f076d91e9354687d1ea71f61a950512c65eef4382434f7bd948d/google_adk-1.10.0.tar.gz", hash = "sha256:9a35fa6099c1a91c8b970ca98efb80640faad51d93520aa5d7c63ac08ebde8ba", size = 1620716 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/a6/93819a03ace1457fcb8a811fcc7f3d3ee5546c69bf02078b10ea68d74fa3/google_adk-1.10.0-py3-none-any.whl", hash = "sha256:8f7a41be6cd1cc1d47319335fa799b260a683b2c56644d0a747112c5e0d017ba", size = 1841748 },
+    { url = "https://files.pythonhosted.org/packages/34/b1/e506f1791b95461d11c9710df0f9aa4502a667232f770833fb22620eae56/google_adk-1.11.0-py3-none-any.whl", hash = "sha256:9c0a75b9994ae7630a3957c076003ac52b1a8a99dd9b0aacf06d019e18093d06", size = 1837302 },
 ]
 
 [[package]]
@@ -748,6 +745,24 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-spanner"
+version = "3.57.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-cloud-core" },
+    { name = "grpc-google-iam-v1" },
+    { name = "grpc-interceptor" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+    { name = "sqlparse" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5e/e8/e008f9ffa2dcf596718d2533d96924735110378853c55f730d2527a19e04/google_cloud_spanner-3.57.0.tar.gz", hash = "sha256:73f52f58617449fcff7073274a7f7a798f4f7b2788eda26de3b7f98ad857ab99", size = 701574 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/9f/66fe9118bc0e593b65ade612775e397f596b0bcd75daa3ea63dbe1020f95/google_cloud_spanner-3.57.0-py3-none-any.whl", hash = "sha256:5b10b40bc646091f1b4cbb2e7e2e82ec66bcce52c7105f86b65070d34d6df86f", size = 501380 },
+]
+
+[[package]]
 name = "google-cloud-speech"
 version = "2.33.0"
 source = { registry = "https://pypi.org/simple" }
@@ -916,6 +931,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b9/4e/8d0ca3b035e41fe0b3f31ebbb638356af720335e5a11154c330169b40777/grpc_google_iam_v1-0.14.2.tar.gz", hash = "sha256:b3e1fc387a1a329e41672197d0ace9de22c78dd7d215048c4c78712073f7bd20", size = 16259 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/66/6f/dd9b178aee7835b96c2e63715aba6516a9d50f6bebbd1cc1d32c82a2a6c3/grpc_google_iam_v1-0.14.2-py3-none-any.whl", hash = "sha256:a3171468459770907926d56a440b2bb643eec1d7ba215f48f3ecece42b4d8351", size = 19242 },
+]
+
+[[package]]
+name = "grpc-interceptor"
+version = "0.15.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "grpcio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/28/57449d5567adf4c1d3e216aaca545913fbc21a915f2da6790d6734aac76e/grpc-interceptor-0.15.4.tar.gz", hash = "sha256:1f45c0bcb58b6f332f37c637632247c9b02bc6af0fdceb7ba7ce8d2ebbfb0926", size = 19322 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/ac/8d53f230a7443401ce81791ec50a3b0e54924bf615ad287654fa4a2f5cdc/grpc_interceptor-0.15.4-py3-none-any.whl", hash = "sha256:0035f33228693ed3767ee49d937bac424318db173fef4d2d0170b3215f254d9d", size = 20848 },
 ]
 
 [[package]]
@@ -1234,7 +1261,7 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.12.4"
+version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1249,9 +1276,9 @@ dependencies = [
     { name = "starlette" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/88/f6cb7e7c260cd4b4ce375f2b1614b33ce401f63af0f49f7141a2e9bf0a45/mcp-1.12.4.tar.gz", hash = "sha256:0765585e9a3a5916a3c3ab8659330e493adc7bd8b2ca6120c2d7a0c43e034ca5", size = 431148 }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/a8/564c094de5d6199f727f5d9f5672dbec3b00dfafd0f67bf52d995eaa5951/mcp-1.13.0.tar.gz", hash = "sha256:70452f56f74662a94eb72ac5feb93997b35995e389b3a3a574e078bed2aa9ab3", size = 434709 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/68/316cbc54b7163fa22571dcf42c9cc46562aae0a021b974e0a8141e897200/mcp-1.12.4-py3-none-any.whl", hash = "sha256:7aa884648969fab8e78b89399d59a683202972e12e6bc9a1c88ce7eda7743789", size = 160145 },
+    { url = "https://files.pythonhosted.org/packages/8b/6b/46b8bcefc2ee9e2d2e8d2bd25f1c2512f5a879fac4619d716b194d6e7ccc/mcp-1.13.0-py3-none-any.whl", hash = "sha256:8b1a002ebe6e17e894ec74d1943cc09aa9d23cb931bf58d49ab2e9fa6bb17e4b", size = 160226 },
 ]
 
 [[package]]
@@ -2101,6 +2128,15 @@ wheels = [
 ]
 
 [[package]]
+name = "sqlparse"
+version = "0.5.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/40/edede8dd6977b0d3da179a342c198ed100dd2aba4be081861ee5911e4da4/sqlparse-0.5.3.tar.gz", hash = "sha256:09f67787f56a0b16ecdbde1bfc7f5d9c3371ca683cfeaa8e6ff60b4807ec9272", size = 84999 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl", hash = "sha256:cf2196ed3418f3ba5de6af7e82c694a9fbdbfecccdfc72e281548517081f16ca", size = 44415 },
+]
+
+[[package]]
 name = "sse-starlette"
 version = "3.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2131,12 +2167,15 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "a2a-sdk" },
+    { name = "anyio" },
     { name = "apscheduler" },
     { name = "asyncpg" },
     { name = "backoff" },
     { name = "fastapi-sso" },
     { name = "google-adk" },
+    { name = "httpx" },
     { name = "litellm" },
+    { name = "mcp" },
     { name = "openai" },
     { name = "orjson" },
     { name = "pydantic", extra = ["email"] },
@@ -2145,13 +2184,16 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a-sdk", specifier = ">=0.3.0" },
+    { name = "a2a-sdk", specifier = ">=0.3.1" },
+    { name = "anyio", specifier = ">=4.6" },
     { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "backoff", specifier = ">=2.2.1" },
     { name = "fastapi-sso", specifier = ">=0.18.0" },
-    { name = "google-adk", specifier = ">=1.10.0" },
+    { name = "google-adk", specifier = ">=1.11.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "litellm", specifier = ">=1.75.3" },
+    { name = "mcp", specifier = ">=1.13.0" },
     { name = "openai", specifier = "<1.100.0" },
     { name = "orjson", specifier = ">=3.11.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
@@ -2161,11 +2203,11 @@ requires-dist = [
 
 [[package]]
 name = "tenacity"
-version = "9.1.2"
+version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/d4/2b0cd0fe285e14b36db076e78c93766ff1d529d70408bd1d2a5a84f1d929/tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb", size = 48036 }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/4d/6a19536c50b849338fcbe9290d562b52cbdcf30d8963d3588a68a4107df1/tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78", size = 47309 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/30/643397144bfbfec6f6ef821f36f33e57d35946c44a2352d3c9f0ae847619/tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138", size = 28248 },
+    { url = "https://files.pythonhosted.org/packages/d2/3f/8ba87d9e287b9d385a02a7114ddcef61b26f86411e121c9003eb509a1773/tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687", size = 28165 },
 ]
 
 [[package]]
