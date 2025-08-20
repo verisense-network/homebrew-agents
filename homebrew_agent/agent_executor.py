@@ -96,35 +96,22 @@ class ADKAgentExecutor(AgentExecutor):
             )
 
             logger.info(f"Running agent with query: {query[:100]}...")
+            # Warn if MCP tools are present, as they are sensitive to loop/thread context
+            if hasattr(self.agent, "tools") and self.agent.tools:
+                logger.info(
+                    f"Agent has {len(self.agent.tools)} tools, checking for MCP tools"
+                )
+                for tool in self.agent.tools:
+                    if hasattr(tool, "_mcp_session_manager"):
+                        logger.warning(
+                            "Agent has MCP tools; running in the same event loop to avoid async issues"
+                        )
+                        break
 
-            content = types.Content(
-                role="user", parts=[types.Part.from_text(text=query)]
-            )
-
-            events = []
-            try:
-                # 如果 ADK 还有 run_stream / astream，也可用，思路相同
-                async for ev in self.runner.run_async(
-                    user_id=user_id,
-                    session_id=session.id,
-                    new_message=content,
-                    # 某些版本支持：raise_on_error=True
-                ):
-                    # 把“错误事件”当作异常立即抛
-                    if getattr(ev, "type", None) in {"error", "on_error"}:
-                        raise RuntimeError(f"Runner error event: {ev}")
-                    events.append(ev)
-            except Exception:
-                logger.exception("runner.run_async failed")
-                raise
-
-            if not events:
-                raise RuntimeError("Runner produced no events (likely upstream crash).")
-
-            logger.info("Agent execution completed, processing %d events", len(events))
-
-            # Process events asynchronously
-            for event in events:
+            # Stream events directly from the async runner in the current event loop
+            async for event in self.runner.run_async(
+                user_id=user_id, session_id=session.id, new_message=content
+            ):
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, "text") and part.text:
@@ -135,14 +122,12 @@ class ADKAgentExecutor(AgentExecutor):
                                 ),
                             )
                         elif hasattr(part, "function_call"):
-                            # Log or handle function calls if needed
                             logger.debug(
                                 f"Function call detected: {part.function_call}"
                             )
 
             await updater.complete()
             logger.info(f"Agent execution completed successfully for task: {task.id}")
-            await asyncio.sleep(1)  # Use asyncio.sleep instead of time.sleep
 
         except Exception as e:
             logger.error(f"Error during agent execution: {e}", exc_info=True)
