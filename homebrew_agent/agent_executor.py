@@ -112,6 +112,7 @@ class ADKAgentExecutor(AgentExecutor):
             async for event in self.runner.run_async(
                 user_id=user_id, session_id=session.id, new_message=content
             ):
+                logger.info(f"Event: {event}")
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, "text") and part.text:

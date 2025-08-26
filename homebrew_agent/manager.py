@@ -4,6 +4,7 @@ from typing import Optional
 import time
 import asyncio
 from dataclasses import dataclass
+from sensespace_did import verify_token
 
 logger = setup_logging(__name__)
 
@@ -89,7 +90,9 @@ class AgentManager:
         del self.agents[lru_key]
         logger.info(f"Evicted LRU agent from cache: {lru_key}")
 
-    async def get_or_create_agent_by_id(self, agent_id: str) -> Optional[AgentInfo]:
+    async def get_or_create_agent_by_id(
+        self, agent_id: str, token: str | None = None
+    ) -> Optional[AgentInfo]:
         current_time = time.time()
 
         # # Check if agent exists in cache and is not expired
@@ -109,7 +112,9 @@ class AgentManager:
 
         # Agent not in cache or expired, create new one
         logger.info(f"Creating new agent: {agent_id}")
-        agent_info = await self.agent_factory.build_agent_starlette_by_id(agent_id)
+        agent_info = await self.agent_factory.build_agent_starlette_by_id(
+            agent_id, token
+        )
 
         # if agent_info:
         #     # Check cache size limit and evict if necessary

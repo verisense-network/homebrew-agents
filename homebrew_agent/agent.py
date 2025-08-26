@@ -22,6 +22,7 @@ from starlette.applications import Starlette
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.tasks import InMemoryTaskStore
+from sensespace_did import verify_token
 
 logger = setup_logging(__name__)
 
@@ -75,8 +76,8 @@ class AgentFactory:
                 "name": "Llm_Auditor",
                 "description": "Audits and refines answers with web cross-checking.",
                 "model": "openai-4o",
-                "prompt": "You are a rigorous LLM answer auditor. Critically evaluate and improve answers.",
-                "mcps": ["mcp-1", "mcp-2"],  # Example MCP IDs
+                "prompt": "You are a ToolBox to call mcps",
+                "mcps": ["mcp-1"],  # Example MCP IDs
             },
             "writer": {
                 "id": "writer",
@@ -147,7 +148,7 @@ class AgentFactory:
                     "id": "mcp-1",
                     "name": "PPT Generator MCP",
                     "description": "MCP for generating PowerPoint presentations",
-                    "url": "https://ppt-mcp-974618882715.us-east1.run.app/mcp/",
+                    "url": "http://localhost:8080/mcp",
                     "provider": "ppt-generator",
                 },
                 # "mcp-2": {
@@ -160,7 +161,9 @@ class AgentFactory:
             }
             return [mock_mcps[mcp_id] for mcp_id in mcp_ids if mcp_id in mock_mcps]
 
-    async def _build_agent(self, cfg: Dict[str, Any]) -> LlmAgent:
+    async def _build_agent(
+        self, cfg: Dict[str, Any], token: str | None = None
+    ) -> LlmAgent:
         """Build LLM Agent"""
         logger.info(f"Building agent with config: {json.dumps(cfg, indent=2)}")
 
@@ -186,6 +189,15 @@ class AgentFactory:
         tools = []
         failed_mcp_count = 0
         total_mcp_count = len(mcp_configs)
+        if token:
+            payload = await verify_token(token)
+            if payload and payload.success:
+                logger.info(f"Verified token: {payload}")
+            else:
+                logger.error(f"Failed to verify token: {payload}")
+                raise Exception("Failed to verify token")
+        else:
+            logger.info("No token provided")
 
         for mcp_config in mcp_configs:
             try:
@@ -196,7 +208,8 @@ class AgentFactory:
                 # Create MCP tool synchronously with error handling
                 mcp_tool = MCPToolset(
                     connection_params=StreamableHTTPConnectionParams(
-                        url=mcp_config["url"]
+                        url=mcp_config["url"],
+                        headers={"Authorization": f"Bearer {token}"},
                     )
                 )
 
@@ -299,7 +312,9 @@ class AgentFactory:
         )
         return app
 
-    async def build_agent_starlette_by_id(self, agent_id: str) -> Optional[AgentInfo]:
+    async def build_agent_starlette_by_id(
+        self, agent_id: str, token: str | None = None
+    ) -> Optional[AgentInfo]:
         cfg = await self._fetch_agent_config(agent_id)
         if not cfg:
             return None
@@ -308,7 +323,7 @@ class AgentFactory:
             v = cfg.get(key)
             if isinstance(v, (datetime.datetime, datetime.date)):
                 cfg[key] = v.isoformat()
-        agent = await self._build_agent(cfg)
+        agent = await self._build_agent(cfg, token)
         card = self._build_agent_card(cfg)
         app = self._build_a2a_substarlette(card, agent, InMemoryTaskStore())
 

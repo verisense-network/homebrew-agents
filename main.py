@@ -32,6 +32,7 @@ from starlette.routing import Route
 from homebrew_agent.agent_executor import ADKAgentExecutor
 from homebrew_agent.manager import AgentManager
 from homebrew_agent.logging_config import setup_logging
+from sensespace_did import verify_token
 
 load_dotenv()
 
@@ -50,6 +51,19 @@ def make_sync(func):
 AGENT_PATH_RE = re.compile(r"^/([^/]+)(/.*)?$")
 
 agent_manager = AgentManager(os.environ.get("DB_URL"))
+BEARER_RE = re.compile(r"^Bearer\s+(.+)$", re.IGNORECASE)
+
+
+def _extract_bearer_from_scope(scope) -> Optional[str]:
+    for name, value in scope.get("headers", []):
+        if name.lower() == b"authorization":
+            try:
+                m = BEARER_RE.match(value.decode("latin-1"))
+                if m:
+                    return m.group(1).strip()
+            except Exception:
+                return None
+    return None
 
 
 class AgentDispatchMiddleware:
@@ -61,6 +75,23 @@ class AgentDispatchMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
+
+        token = _extract_bearer_from_scope(scope)
+        if token:
+            logger.info(f"Got Bearer token (len={len(token)}).")
+            try:
+                payload = await verify_token(token)
+                if payload and payload.success:
+                    logger.info(f"Verified token: {payload}")
+                else:
+                    logger.error(f"Failed to verify token: {payload}")
+                    return await self._json(send, 401, {"error": "Unauthorized"})
+            except Exception as e:
+                logger.error(f"Failed to verify token: {e}")
+                return await self._json(send, 401, {"error": "Unauthorized"})
+        else:
+            logger.info("No Bearer token found.")
+            return await self._json(send, 401, {"error": "Unauthorized"})
 
         path = scope.get("path", "")
 
@@ -82,7 +113,7 @@ class AgentDispatchMiddleware:
         rest = m.group(2) or "/"
 
         logger.info(f"Routing to agent '{agent_id}', path: {rest}")
-        agent_info = await agent_manager.get_or_create_agent_by_id(agent_id)
+        agent_info = await agent_manager.get_or_create_agent_by_id(agent_id, token)
         if agent_info is None:
             return await self._json(
                 send, 404, {"error": f"Agent '{agent_id}' not found"}
@@ -117,7 +148,9 @@ class AgentDispatchMiddleware:
 @click.command()
 @click.option("--host", default="0.0.0.0")
 @click.option("--port", default=8080)
-@click.option("--debug", is_flag=True, help="Enable debug mode (overrides LOG_LEVEL env)")
+@click.option(
+    "--debug", is_flag=True, help="Enable debug mode (overrides LOG_LEVEL env)"
+)
 @make_sync
 async def main(host, port, debug):
     if debug:
@@ -129,8 +162,10 @@ async def main(host, port, debug):
     app = AgentDispatchMiddleware(base)
 
     # Use LOG_LEVEL from env unless debug flag is set
-    uvicorn_log_level = "debug" if debug else os.environ.get("LOG_LEVEL", "info").lower()
-    
+    uvicorn_log_level = (
+        "debug" if debug else os.environ.get("LOG_LEVEL", "info").lower()
+    )
+
     config = uvicorn.Config(
         app, host=host, port=port, log_level=uvicorn_log_level, reload=debug
     )

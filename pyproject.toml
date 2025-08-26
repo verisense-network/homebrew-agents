@@ -19,5 +19,16 @@ dependencies = [
     "openai<1.100.0",
     "anyio>=4.6",
     "mcp>=1.13.0",
+    "base58>=2.1.1",
     "httpx>=0.27.0",
+    "cryptography>=45.0.6",
+    "pyjwt>=2.10.1",
+    "sensespace-did>=0.1.0",
 ]
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+explicit = true
+
+[tool.uv.sources]
+sensespace-did = { index = "testpypi" }
