@@ -7,13 +7,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 EXPOSE 8080
 
-
-COPY pyproject.toml uv.lock* ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
-
+#COPY pyproject.toml uv.lock* ./
+#RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
 
 COPY . ./
-
-
-
+RUN uv sync
 ENTRYPOINT ["uv", "run", "main.py", "--host", "0.0.0.0", "--port", "8080"]
