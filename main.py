@@ -64,7 +64,7 @@ class AgentDispatchMiddleware:
 
         path = scope.get("path", "")
 
-        if path == "/healthz":
+        if path == "/health":
 
             async def _send_ok():
                 await send(
