@@ -25,27 +25,27 @@ class Agent:
     def __init__(self, instruction, model, tools=[]):
         # Determine model based on model_source
         set_tracing_disabled(True)
-        self.instruction = instruction
-        self.tools = []
+        mcp_tools = []
         for tool in tools:
-            self.tools.append(
+            logger.info("Adding tool: %s", tool)
+            mcp_tools.append(
                 HostedMCPTool(
                     tool_config={
                         "type": "mcp",
-                        "server_label": tool["name"],
+                        "server_label": tool["id"],
                         "server_url": tool["url"],
                     }
                 )
             )
         if model == "gemini":
-            self.model = "litellm/gemini/gemini-2.5-pro"
-        elif model == "openai":
-            self.model = "gpt-5-mini"
+            model = "litellm/gemini/gemini-2.5-pro"
+        else:
+            model = "gpt-5-mini"
         self.agent = OpenAIAgent(
             name="default",
-            instructions=self.instruction,
-            model=self.model,
-            tools=self.tools,
+            instructions=instruction,
+            model=model,
+            tools=mcp_tools,
         )
 
     async def stream(self, inputs) -> AsyncIterable[dict[str, Any]]:

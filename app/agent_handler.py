@@ -116,7 +116,7 @@ class AgentFactory:
 
     async def build(self, agent_id: str) -> JSONRPCHandler:
         """Build LLM Agent"""
-        agent_config = self._fetch_agent_config(agent_id)
+        agent_config = await self._fetch_agent_config(agent_id)
         # TODO assert not NONE
         agent_card = self._build_agent_card(agent_config)
         tools = await self._fetch_mcp_configs(agent_config["mcps"])

@@ -221,6 +221,7 @@ pids
 .env.test.local
 .env.production.local
 .env.yml
+.env-test.yml
 
 # Claude Code
 .claude/
