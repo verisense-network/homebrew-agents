@@ -12,4 +12,4 @@ EXPOSE 8080
 
 COPY . ./
 RUN uv sync
-ENTRYPOINT ["uv", "run", "main.py", "--host", "0.0.0.0", "--port", "8080"]
+ENTRYPOINT ["uv", "run", "app", "--host", "0.0.0.0", "--port", "8080"]
