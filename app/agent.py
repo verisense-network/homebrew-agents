@@ -12,11 +12,17 @@ from agents import (
     ItemHelpers,
     HostedMCPTool,
 )
+from agents.tool import MCPToolApprovalFunctionResult
 from agents.model_settings import ModelSettings
 from agents.tracing import set_tracing_disabled
 
 
 logger = logging.getLogger(__name__)
+
+
+def on_approval_request(tool_call):
+    logger.info("waiting for approval: %s", tool_call)
+    return MCPToolApprovalFunctionResult(approved=True, reason="auto-approved")
 
 
 class Agent:
@@ -28,17 +34,18 @@ class Agent:
         mcp_tools = []
         for tool in tools:
             logger.info("Adding tool: %s", tool)
-            mcp_tools.append(
-                HostedMCPTool(
-                    tool_config={
-                        "type": "mcp",
-                        "server_label": tool["id"],
-                        "server_url": tool["url"],
-                    }
-                )
+            mcp_tool = HostedMCPTool(
+                tool_config={
+                    "type": "mcp",
+                    "server_label": tool["id"],
+                    "server_url": tool["url"],
+                    "require_approval": "never",
+                },
+                # on_approval_request=on_approval_request,
             )
+            mcp_tools.append(mcp_tool)
         if model == "gemini":
-            model = "litellm/gemini/gemini-2.5-pro"
+            model = "litellm/gemini/gemini-2.5-flash"
         else:
             model = "gpt-5-mini"
         self.agent = OpenAIAgent(
@@ -58,12 +65,13 @@ class Agent:
                 if event.type == "agent_updated_stream_event":
                     continue
                 if event.type == "run_item_stream_event":
+                    logger.info("Run item event: %s", event)
                     # Handle different types of run items
                     if event.name == "tool_called":
                         # Tool call event
                         # Extract tool call information
                         tool_name = event.item.raw_item.name
-                        tool_call_id = event.item.raw_item.call_id
+                        tool_call_id = event.item.raw_item.id
                         arguments = event.item.raw_item.arguments
                         yield {
                             "task_complete": False,
