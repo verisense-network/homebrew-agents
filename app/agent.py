@@ -2,6 +2,7 @@ import os
 import logging
 import httpx
 
+from contextlib import AsyncExitStack
 from collections.abc import AsyncIterable
 from typing import Any, Literal
 from pydantic import BaseModel
@@ -9,13 +10,18 @@ from agents.mcp import MCPServerStreamableHttp
 from agents import (
     Agent as OpenAIAgent,
     Runner,
+    Model,
+    OpenAIResponsesModel,
+    ModelProvider,
+    RunConfig,
     ItemHelpers,
     HostedMCPTool,
+    set_default_openai_client,
 )
 from agents.tool import MCPToolApprovalFunctionResult
 from agents.model_settings import ModelSettings
 from agents.tracing import set_tracing_disabled
-
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -25,39 +31,95 @@ def on_approval_request(tool_call):
     return MCPToolApprovalFunctionResult(approved=True, reason="auto-approved")
 
 
+key = os.getenv("AMBIENT_API_KEY", "")
+ambient_client = AsyncOpenAI(base_url="https://api.ambient.xyz", api_key=key)
+
+
+class AmbientModelProvider(ModelProvider):
+    def get_model(self, model_name: str | None) -> Model:
+        return OpenAIResponsesModel(model=model_name, openai_client=ambient_client)
+
+
 class Agent:
     """The default agent impl."""
 
     def __init__(self, instruction, model, tools=[]):
         # Determine model based on model_source
         set_tracing_disabled(True)
-        mcp_tools = []
-        for tool in tools:
-            logger.info("Adding tool: %s", tool)
-            mcp_tool = HostedMCPTool(
-                tool_config={
-                    "type": "mcp",
-                    "server_label": tool["id"],
-                    "server_url": tool["url"],
-                    "require_approval": "never",
+        # mcp_tools = []
+        # for tool in tools:
+        #     logger.info("Adding tool: %s", tool)
+        #     mcp_tool = HostedMCPTool(
+        #         tool_config={
+        #             "type": "mcp",
+        #             "server_label": tool["id"],
+        #             "server_url": tool["url"],
+        #             "require_approval": "never",
+        #         },
+        #     )
+        #     mcp_tools.append(mcp_tool)
+        self.instructions = instruction
+        self.model = model
+        self.tools = tools
+
+    async def init(self) -> (OpenAIAgent, RunConfig):
+        mcp_list = []
+        for tool in self.tools:
+            server = MCPServerStreamableHttp(
+                name=tool["name"],
+                cache_tools_list=True,
+                client_session_timeout_seconds=30,
+                params={
+                    "url": tool["url"],
                 },
-                # on_approval_request=on_approval_request,
             )
-            mcp_tools.append(mcp_tool)
-        if model == "gemini":
-            model = "litellm/gemini/gemini-2.5-flash"
-        else:
-            model = "gpt-5-mini"
-        self.agent = OpenAIAgent(
-            name="default",
-            instructions=instruction,
-            model=model,
-            tools=mcp_tools,
+            try:
+                await server.connect()
+                mcp_list.append(server)
+            except Exception as e:
+                logger.error("Failed to connect to MCP server %s: %s", tool["url"], e)
+                await server.cleanup()
+        if self.model == "openai":
+            return (
+                OpenAIAgent(
+                    name="default",
+                    instructions=self.instructions,
+                    mcp_servers=mcp_list,
+                    # tools=mcp_tools,
+                    model="gpt-5-mini",
+                ),
+                RunConfig(),
+            )
+        if self.model == "ambient":
+            return (
+                OpenAIAgent(
+                    name="default",
+                    instructions=self.instructions,
+                    mcp_servers=mcp_list,
+                    # tools=mcp_tools,
+                ),
+                RunConfig(model_provier=AmbientModelProvider()),
+            )
+        return (
+            OpenAIAgent(
+                name="default",
+                instructions=self.instructions,
+                mcp_servers=mcp_list,
+                # tools=mcp_tools,
+                model="litellm/gemini/gemini-2.5-flash",
+            ),
+            RunConfig(),
         )
 
     async def stream(self, inputs) -> AsyncIterable[dict[str, Any]]:
         try:
-            stream = Runner.run_streamed(self.agent, inputs, max_turns=100)
+            agent, run_config = await self.init()
+            stream = Runner.run_streamed(
+                agent,
+                inputs,
+                max_turns=100,
+                run_config=run_config,
+            )
             # Stream events as they come in
             async for event in stream.stream_events():
                 if event.type == "raw_response_event":
@@ -71,7 +133,7 @@ class Agent:
                         # Tool call event
                         # Extract tool call information
                         tool_name = event.item.raw_item.name
-                        tool_call_id = event.item.raw_item.id
+                        tool_call_id = event.item.raw_item.call_id
                         arguments = event.item.raw_item.arguments
                         yield {
                             "task_complete": False,
